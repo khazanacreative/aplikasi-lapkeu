@@ -7,14 +7,216 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
-      [_ in never]: never
+      branches: {
+        Row: {
+          id: string
+          nama_cabang: string
+          alamat: string | null
+          nomor_telepon: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          nama_cabang: string
+          alamat?: string | null
+          nomor_telepon?: string | null
+        }
+        Update: {
+          nama_cabang?: string
+          alamat?: string | null
+          nomor_telepon?: string | null
+          updated_at?: string
+        }
+      }
+      user_roles: {
+        Row: {
+          id: string
+          user_id: string
+          role: string
+          branch_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          role: string
+          branch_id?: string | null
+        }
+        Update: {
+          role?: string
+          branch_id?: string | null
+        }
+      }
+      transaksi: {
+        Row: {
+          id: string
+          branch_id: string | null
+          user_id: string
+          tanggal: string
+          keterangan: string
+          kategori: string
+          jenis: string
+          nominal: number
+          invoice_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          branch_id?: string | null
+          user_id: string
+          tanggal: string
+          keterangan: string
+          kategori: string
+          jenis: string
+          nominal: number
+          invoice_id?: string | null
+        }
+        Update: {
+          branch_id?: string | null
+          keterangan?: string
+          kategori?: string
+          jenis?: string
+          nominal?: number
+          invoice_id?: string | null
+        }
+      }
+      invoice: {
+        Row: {
+          id: string
+          branch_id: string | null
+          user_id: string
+          nomor_invoice: string
+          pelanggan: string
+          tanggal: string
+          nominal: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          branch_id?: string | null
+          user_id: string
+          nomor_invoice: string
+          pelanggan: string
+          tanggal: string
+          nominal: number
+          status?: string
+        }
+        Update: {
+          nomor_invoice?: string
+          pelanggan?: string
+          tanggal?: string
+          nominal?: number
+          status?: string
+        }
+      }
+      pos_transaksi: {
+        Row: {
+          id: string
+          branch_id: string | null
+          kode_pos: string
+          total: number
+          tanggal: string
+          sumber: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          branch_id?: string | null
+          kode_pos: string
+          total: number
+          tanggal: string
+          sumber?: string | null
+        }
+        Update: {
+          kode_pos?: string
+          total?: number
+          tanggal?: string
+          sumber?: string | null
+        }
+      }
+      invoice_items: {
+        Row: {
+          id: string
+          invoice_id: string
+          nama_item: string
+          jumlah: number
+          harga_satuan: number
+          subtotal: number
+          keterangan: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          nama_item: string
+          jumlah: number
+          harga_satuan: number
+          subtotal: number
+          keterangan?: string | null
+        }
+        Update: {
+          nama_item?: string
+          jumlah?: number
+          harga_satuan?: number
+          subtotal?: number
+          keterangan?: string | null
+        }
+      }
+      products: {
+        Row: {
+          id: string
+          user_id: string
+          branch_id: string | null
+          nama: string
+          harga: number
+          stok: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          branch_id?: string | null
+          nama: string
+          harga: number
+          stok?: number
+        }
+        Update: {
+          nama?: string
+          harga?: number
+          stok?: number
+        }
+      }
+      profiles: {
+        Row: {
+          id: string
+          nama_usaha: string | null
+          alamat: string | null
+          whatsapp: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          nama_usaha?: string | null
+          alamat?: string | null
+          whatsapp?: string | null
+        }
+        Update: {
+          nama_usaha?: string | null
+          alamat?: string | null
+          whatsapp?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -128,7 +330,7 @@ export type Enums<
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    ? DefaultSchema[DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
@@ -145,7 +347,7 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    ? DefaultSchema[PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {
