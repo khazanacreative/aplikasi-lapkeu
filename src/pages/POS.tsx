@@ -72,19 +72,39 @@ const POS = () => {
   }, [user, loading, navigate]);
 
   // Load products from localStorage on mount
-  useEffect(() => {
-    const savedProducts = localStorage.getItem("pos_products");
-    if (savedProducts) {
-      setProducts(JSON.parse(savedProducts));
-    }
-  }, []);
+  // Fetch products from Supabase
+  const fetchProducts = async () => {
+    if (!user?.id) return;
 
-  // Save products to localStorage whenever they change
-  useEffect(() => {
-    if (products.length > 0) {
-      localStorage.setItem("pos_products", JSON.stringify(products));
+    try {
+      // Try to select products available to the user (RLS policies apply)
+      const { data, error } = await (supabase as any)
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching products:", error);
+        return;
+      }
+
+      const mapped: Product[] = (data || []).map((row: any) => ({
+        id: row.id,
+        name: row.nama,
+        price: parseFloat(row.harga || 0),
+        stock: parseInt(row.stok || 0),
+      }));
+
+      setProducts(mapped);
+    } catch (err) {
+      console.error("Fetch products failed:", err);
     }
-  }, [products]);
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Fetch invoices
   const fetchInvoices = async () => {
@@ -143,30 +163,52 @@ const POS = () => {
       return;
     }
 
-    const newProduct: Product = {
-      id: Date.now().toString(),
-      name: productName,
-      price: parseFloat(productPrice),
-      stock: parseInt(productStock),
-    };
+    (async () => {
+      try {
+        const branchId = userRole?.branch_id || null;
+        const { data: inserted, error } = await (supabase as any)
+          .from("products")
+          .insert({
+            user_id: user?.id,
+            branch_id: branchId,
+            nama: productName,
+            harga: parseFloat(productPrice),
+            stok: parseInt(productStock),
+          })
+          .select()
+          .single();
 
-    setProducts([...products, newProduct]);
-    setProductName("");
-    setProductPrice("");
-    setProductStock("");
-    
-    toast({
-      title: "Produk Ditambahkan",
-      description: `${newProduct.name} berhasil ditambahkan ke katalog`,
-    });
+        if (error) throw error;
+
+        const newProduct: Product = {
+          id: inserted.id,
+          name: inserted.nama,
+          price: parseFloat(inserted.harga || 0),
+          stock: parseInt(inserted.stok || 0),
+        };
+
+        setProducts(prev => [newProduct, ...prev]);
+        setProductName("");
+        setProductPrice("");
+        setProductStock("");
+
+        toast({
+          title: "Produk Ditambahkan",
+          description: `${newProduct.name} berhasil ditambahkan ke katalog`,
+        });
+      } catch (err) {
+        console.error("Error adding product:", err);
+        toast({ title: "Error", description: "Gagal menambahkan produk", variant: "destructive" });
+      }
+    })();
   };
 
   const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
+  const reader = new FileReader();
+  reader.onload = async (evt) => {
       try {
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: "binary" });
@@ -174,18 +216,26 @@ const POS = () => {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws);
 
-        const importedProducts: Product[] = data.map((row: any, index: number) => ({
-          id: `imported-${Date.now()}-${index}`,
-          name: row.nama || row.Nama || row.name || row.Name || "",
-          price: parseFloat(row.harga || row.Harga || row.price || row.Price || 0),
-          stock: parseInt(row.stok || row.Stok || row.stock || row.Stock || 0),
+        const prepared = data.map((row: any) => ({
+          user_id: user?.id,
+          branch_id: userRole?.branch_id || null,
+          nama: row.nama || row.Nama || row.name || row.Name || "",
+          harga: parseFloat(row.harga || row.Harga || row.price || row.Price || 0),
+          stok: parseInt(row.stok || row.Stok || row.stock || row.Stock || 0),
         }));
 
-        setProducts([...products, ...importedProducts]);
-        toast({
-          title: "Import Berhasil",
-          description: `${importedProducts.length} produk berhasil diimport`,
-        });
+        try {
+          const { error } = await (supabase as any).from("products").insert(prepared);
+          if (error) throw error;
+          await fetchProducts();
+          toast({
+            title: "Import Berhasil",
+            description: `${prepared.length} produk berhasil diimport`,
+          });
+        } catch (err) {
+          console.error("Import failed:", err);
+          toast({ title: "Error", description: "Gagal mengimport produk", variant: "destructive" });
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -333,15 +383,18 @@ const POS = () => {
         if (transaksiError) throw transaksiError;
       }
 
-      // Update product stock
-      const updatedProducts = products.map(product => {
-        const cartItem = cart.find(item => item.id === product.id);
-        if (cartItem) {
-          return { ...product, stock: product.stock - cartItem.quantity };
-        }
-        return product;
-      });
-      setProducts(updatedProducts);
+      // Update product stock in DB then refresh local list
+      try {
+        await Promise.all(cart.map(async (cartItem) => {
+          const product = products.find(p => p.id === cartItem.id);
+          if (!product) return;
+          const newStock = product.stock - cartItem.quantity;
+          await (supabase as any).from("products").update({ stok: newStock }).eq("id", cartItem.id);
+        }));
+        await fetchProducts();
+      } catch (err) {
+        console.error("Failed updating product stocks:", err);
+      }
 
       toast({
         title: "Transaksi Berhasil",
@@ -362,11 +415,17 @@ const POS = () => {
   };
 
   const deleteProduct = (id: string) => {
-    setProducts(products.filter(p => p.id !== id));
-    toast({
-      title: "Produk Dihapus",
-      description: "Produk berhasil dihapus dari katalog",
-    });
+    (async () => {
+      try {
+  const { error } = await (supabase as any).from("products").delete().eq("id", id);
+        if (error) throw error;
+        setProducts(prev => prev.filter(p => p.id !== id));
+        toast({ title: "Produk Dihapus", description: "Produk berhasil dihapus dari katalog" });
+      } catch (err) {
+        console.error("Delete product failed:", err);
+        toast({ title: "Error", description: "Gagal menghapus produk", variant: "destructive" });
+      }
+    })();
   };
 
   const openEditDialog = (product: Product) => {
@@ -379,27 +438,29 @@ const POS = () => {
 
   const saveEditProduct = () => {
     if (!editingProduct || !editName || !editPrice || !editStock) {
-      toast({
-        title: "Error",
-        description: "Mohon isi semua field",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Mohon isi semua field", variant: "destructive" });
       return;
     }
 
-    setProducts(products.map(p => 
-      p.id === editingProduct.id 
-        ? { ...p, name: editName, price: parseFloat(editPrice), stock: parseInt(editStock) }
-        : p
-    ));
+    (async () => {
+      try {
+        const { error } = await (supabase as any)
+          .from("products")
+          .update({ nama: editName, harga: parseFloat(editPrice), stok: parseInt(editStock) })
+          .eq("id", editingProduct.id);
 
-    toast({
-      title: "Produk Diperbarui",
-      description: `${editName} berhasil diperbarui`,
-    });
+        if (error) throw error;
 
-    setEditDialogOpen(false);
-    setEditingProduct(null);
+        setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, name: editName, price: parseFloat(editPrice), stock: parseInt(editStock) } : p));
+
+        toast({ title: "Produk Diperbarui", description: `${editName} berhasil diperbarui` });
+        setEditDialogOpen(false);
+        setEditingProduct(null);
+      } catch (err) {
+        console.error("Update product failed:", err);
+        toast({ title: "Error", description: "Gagal memperbarui produk", variant: "destructive" });
+      }
+    })();
   };
 
   const openAddStockDialog = (product: Product) => {
@@ -410,37 +471,32 @@ const POS = () => {
 
   const saveAddStock = () => {
     if (!addStockProduct || !addStockAmount) {
-      toast({
-        title: "Error",
-        description: "Mohon isi jumlah stok",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Mohon isi jumlah stok", variant: "destructive" });
       return;
     }
 
     const amount = parseInt(addStockAmount);
     if (amount <= 0) {
-      toast({
-        title: "Error",
-        description: "Jumlah stok harus lebih dari 0",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Jumlah stok harus lebih dari 0", variant: "destructive" });
       return;
     }
 
-    setProducts(products.map(p => 
-      p.id === addStockProduct.id 
-        ? { ...p, stock: p.stock + amount }
-        : p
-    ));
+    (async () => {
+      try {
+        const newStock = addStockProduct.stock + amount;
+  const { error } = await (supabase as any).from("products").update({ stok: newStock }).eq("id", addStockProduct.id);
+        if (error) throw error;
 
-    toast({
-      title: "Stok Ditambahkan",
-      description: `${amount} stok berhasil ditambahkan ke ${addStockProduct.name}`,
-    });
+        setProducts(prev => prev.map(p => p.id === addStockProduct.id ? { ...p, stock: newStock } : p));
 
-    setAddStockDialogOpen(false);
-    setAddStockProduct(null);
+        toast({ title: "Stok Ditambahkan", description: `${amount} stok berhasil ditambahkan ke ${addStockProduct.name}` });
+        setAddStockDialogOpen(false);
+        setAddStockProduct(null);
+      } catch (err) {
+        console.error("Add stock failed:", err);
+        toast({ title: "Error", description: "Gagal menambahkan stok", variant: "destructive" });
+      }
+    })();
   };
 
   // Filter & Pagination
