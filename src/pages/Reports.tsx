@@ -46,13 +46,11 @@ const Reports = () => {
     const { data, error } = await query;
 
     if (error) {
-      console.error("Error fetching transactions:", error);
       toast({
         title: "Error",
-        description: `Gagal memuat data: ${error.message}`,
+        description: "Gagal memuat data transaksi",
         variant: "destructive",
       });
-      setTransactions([]);
     } else {
       setTransactions(data || []);
     }
