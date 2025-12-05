@@ -79,7 +79,7 @@ const Transactions = () => {
   }, [filterDate]);
 
   const fetchInvoices = async () => {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("invoice")
       .select("id, nomor_invoice, pelanggan, nominal, tanggal")
       .eq("user_id", user?.id)
@@ -94,7 +94,7 @@ const Transactions = () => {
     
     // Auto-fill form if invoice_id is in URL
     if (prefilledInvoiceId && data) {
-      const selectedInvoice = data.find(inv => inv.id === prefilledInvoiceId);
+      const selectedInvoice = data.find((inv: Invoice) => inv.id === prefilledInvoiceId);
       if (selectedInvoice) {
         setFormData({
           tanggal: new Date().toISOString().split('T')[0],
@@ -113,7 +113,7 @@ const Transactions = () => {
   };
 
   const fetchTransactions = async () => {
-    let query = supabase
+    let query = (supabase as any)
       .from("transaksi")
       .select("*")
       .eq("user_id", user?.id)
@@ -135,7 +135,7 @@ const Transactions = () => {
   };
 
   const handleDeleteTransaction = async (id: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("transaksi")
       .delete()
       .eq("id", id);
@@ -179,7 +179,7 @@ const Transactions = () => {
       return;
     }
 
-    const { error } = await supabase.from("transaksi").insert({
+    const { error } = await (supabase as any).from("transaksi").insert({
       branch_id: userRole?.branch_id || null,
       user_id: user?.id,
       tanggal: formData.tanggal,
@@ -248,6 +248,8 @@ const Transactions = () => {
   };
 
   const kategoris = Object.keys(kategoriJenisMap);
+
+  const totalPages = Math.ceil(transactions.length / transactionItemsPerPage);
 
   return (
     <div className="min-h-screen bg-background pb-20 relative z-0">
@@ -489,21 +491,20 @@ const Transactions = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="text-destructive hover:bg-destructive/10"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteTransaction(transaction.id);
                           }}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </Card>
-                  ))}
+                    ))}
                   </div>
 
-                  {/* Transaction Pagination */}
-                  {transactions.length > transactionItemsPerPage && (
+                  {totalPages > 1 && (
                     <Pagination className="mt-6">
                       <PaginationContent>
                         <PaginationItem>
@@ -512,7 +513,7 @@ const Transactions = () => {
                             className={transactionPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                           />
                         </PaginationItem>
-                        {Array.from({ length: Math.ceil(transactions.length / transactionItemsPerPage) }, (_, i) => i + 1).map(page => (
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                           <PaginationItem key={page}>
                             <PaginationLink
                               onClick={() => setTransactionPage(page)}
@@ -525,8 +526,8 @@ const Transactions = () => {
                         ))}
                         <PaginationItem>
                           <PaginationNext 
-                            onClick={() => setTransactionPage(p => Math.min(Math.ceil(transactions.length / transactionItemsPerPage), p + 1))}
-                            className={transactionPage === Math.ceil(transactions.length / transactionItemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            onClick={() => setTransactionPage(p => Math.min(totalPages, p + 1))}
+                            className={transactionPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                           />
                         </PaginationItem>
                       </PaginationContent>

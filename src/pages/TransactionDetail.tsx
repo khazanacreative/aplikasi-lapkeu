@@ -46,7 +46,7 @@ const TransactionDetail = () => {
 
   const fetchTransactionDetail = async () => {
     setLoadingData(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("transaksi")
       .select("*")
       .eq("id", id)
@@ -66,8 +66,8 @@ const TransactionDetail = () => {
     setTransaction(data);
 
     // Fetch invoice if exists
-    if (data.invoice_id) {
-      const { data: invoiceData } = await supabase
+    if (data?.invoice_id) {
+      const { data: invoiceData } = await (supabase as any)
         .from("invoice")
         .select("nomor_invoice, pelanggan")
         .eq("id", data.invoice_id)
