@@ -15,3 +15,28 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
   }
 });
+
+// Runtime checks and dev helpers
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  if (import.meta.env.MODE === "development" || import.meta.env.DEV) {
+    // Warn in development to help debugging without breaking the build
+    // eslint-disable-next-line no-console
+    console.warn(
+      "Supabase environment variables are not set. Check VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY"
+    );
+  } else {
+    // In production, fail fast to avoid mysterious runtime errors
+    throw new Error("Missing Supabase environment variables: VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY");
+  }
+}
+
+// Expose client to window in development for quick manual testing in browser console
+if (import.meta.env.DEV) {
+  try {
+    (window as any).supabase = supabase;
+    // eslint-disable-next-line no-console
+    console.log("Supabase client available as window.supabase (dev only)");
+  } catch (e) {
+    // ignore if window is not available (e.g., server-side rendering)
+  }
+}
