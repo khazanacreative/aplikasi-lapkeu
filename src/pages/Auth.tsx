@@ -38,32 +38,45 @@ const Auth = () => {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`,
-      },
-    });
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
 
-    setLoading(false);
+      if (error) {
+        toast({
+          title: "Error Registrasi",
+          description: error.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
+      if (data.user) {
+        // Wait a moment for trigger to create user_roles & profiles
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        toast({
+          title: "Berhasil Terdaftar!",
+          description: "Akun berhasil dibuat. Silakan login dengan email dan password Anda.",
+        });
+        setEmail("");
+        setPassword("");
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
       toast({
         title: "Error",
-        description: error.message,
+        description: "Terjadi kesalahan saat mendaftar. Silakan coba lagi.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (data.user) {
-      toast({
-        title: "Berhasil!",
-        description: "Akun berhasil dibuat. Silakan login.",
-      });
-      setEmail("");
-      setPassword("");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,28 +94,38 @@ const Auth = () => {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    setLoading(false);
+      if (error) {
+        toast({
+          title: "Error Login",
+          description: error.message || "Email atau password salah!",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
+      if (data.user) {
+        toast({
+          title: "Berhasil!",
+          description: "Anda berhasil login.",
+        });
+        navigate("/home");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
       toast({
-        title: "Error Login",
-        description: "Email atau password salah!",
+        title: "Error",
+        description: "Terjadi kesalahan saat login. Silakan coba lagi.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (data.user) {
-      toast({
-        title: "Berhasil!",
-        description: "Anda berhasil login.",
-      });
-      navigate("/home");
+    } finally {
+      setLoading(false);
     }
   };
 
