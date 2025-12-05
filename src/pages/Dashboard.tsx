@@ -28,10 +28,10 @@ const Dashboard = () => {
   useEffect(() => {
     if (user && userRole) {
       if (userRole.role === "admin_pusat") {
-        supabase
+        (supabase as any)
           .from("branches")
           .select("*")
-          .then(({ data }) => {
+          .then(({ data }: any) => {
             if (data) {
               setBranches(data);
               if (data.length > 0) setSelectedBranch(data[0].id);
@@ -39,12 +39,12 @@ const Dashboard = () => {
           });
       } else if (userRole.branch_id) {
         setSelectedBranch(userRole.branch_id);
-        supabase
+        (supabase as any)
           .from("branches")
           .select("*")
           .eq("id", userRole.branch_id)
           .single()
-          .then(({ data }) => {
+          .then(({ data }: any) => {
             if (data) setBranches([data]);
           });
       }
@@ -56,13 +56,13 @@ const Dashboard = () => {
     if (!user?.id) return;
 
     const fetchDashboardData = async () => {
-      let transQuery = supabase
+      let transQuery = (supabase as any)
         .from("transaksi")
         .select("*")
         .eq("user_id", user.id)
         .order("tanggal", { ascending: false });
 
-      let invoiceQuery = supabase
+      let invoiceQuery = (supabase as any)
         .from("invoice")
         .select("*")
         .eq("user_id", user.id)
@@ -83,12 +83,12 @@ const Dashboard = () => {
       if (!transResult.error && transResult.data) {
         // Calculate totals
         const totalPemasukan = transResult.data
-          .filter(t => t.jenis === "Debet")
-          .reduce((sum, t) => sum + Number(t.nominal), 0);
+          .filter((t: any) => t.jenis === "Debet")
+          .reduce((sum: number, t: any) => sum + Number(t.nominal), 0);
         
         const totalPengeluaran = transResult.data
-          .filter(t => t.jenis === "Kredit")
-          .reduce((sum, t) => sum + Number(t.nominal), 0);
+          .filter((t: any) => t.jenis === "Kredit")
+          .reduce((sum: number, t: any) => sum + Number(t.nominal), 0);
 
         setPemasukan(totalPemasukan);
         setPengeluaran(totalPengeluaran);

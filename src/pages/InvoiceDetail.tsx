@@ -52,7 +52,7 @@ const InvoiceDetail = () => {
   const fetchInvoiceDetail = async () => {
     setLoadingData(true);
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("invoice")
       .select("*")
       .eq("id", id)
@@ -71,7 +71,7 @@ const InvoiceDetail = () => {
 
     setInvoice(data);
 
-    const { data: transactionsData } = await supabase
+    const { data: transactionsData } = await (supabase as any)
       .from("transaksi")
       .select("*")
       .eq("invoice_id", id)
@@ -81,7 +81,7 @@ const InvoiceDetail = () => {
     if (transactionsData) setTransactions(transactionsData);
 
     // Fetch invoice items
-    const { data: itemsData } = await supabase
+    const { data: itemsData } = await (supabase as any)
       .from("invoice_items")
       .select("*")
       .eq("invoice_id", id)
@@ -93,7 +93,7 @@ const InvoiceDetail = () => {
   };
 
   const updateStatus = async (newStatus: string) => {
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("invoice")
       .update({ status: newStatus })
       .eq("id", id);
@@ -475,45 +475,44 @@ const InvoiceDetail = () => {
               </div>
             </Card>
           )}
-        </div>
 
-
-        {transactions.length > 0 && (
-          <Card className="p-6 shadow-lg mb-6">
-            <h3 className="text-lg font-bold mb-4">Riwayat Transaksi Terkait</h3>
-            <div className="space-y-3">
-              {transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex justify-between items-center p-4 bg-muted/50 rounded-lg hover:bg-muted/80 transition-colors cursor-pointer"
-                  onClick={() =>
-                    navigate(`/transactions/${transaction.id}`)
-                  }
-                >
-                  <div>
-                    <p className="font-semibold">{transaction.keterangan}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {transaction.kategori}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(transaction.tanggal).toLocaleDateString(
-                        "id-ID"
-                      )}
-                    </p>
-                  </div>
-                  <div className="text-right">
+          {transactions.length > 0 && (
+            <Card className="p-6 shadow-lg">
+              <h3 className="text-lg font-bold mb-4">Riwayat Pembayaran</h3>
+              <div className="space-y-3">
+                {transactions.map((transaction) => (
+                  <div
+                    key={transaction.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">{transaction.keterangan}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(transaction.created_at).toLocaleString("id-ID")}
+                      </p>
+                    </div>
                     <p className="font-bold text-success">
                       {formatCurrency(transaction.nominal)}
                     </p>
-                    <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
-                      {transaction.jenis}
-                    </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {invoice.status === "Belum Lunas" && (
+            <Card className="p-6 shadow-lg mt-6">
+              <h3 className="text-lg font-bold mb-4">Catat Pembayaran</h3>
+              <Button
+                onClick={() => navigate(`/transactions?tab=tambah&invoice_id=${invoice.id}`)}
+                className="w-full gradient-primary border-0"
+                size="lg"
+              >
+                Catat Transaksi untuk Invoice Ini
+              </Button>
+            </Card>
+          )}
+        </div>
       </main>
     </div>
   );

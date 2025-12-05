@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session?.user) {
           // Fetch user role
           setTimeout(async () => {
-            const { data } = await supabase
+            const { data } = await (supabase as any)
               .from("user_roles")
               .select("role, branch_id")
               .eq("user_id", session.user.id)
@@ -57,12 +57,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        supabase
+        (supabase as any)
           .from("user_roles")
           .select("role, branch_id")
           .eq("user_id", session.user.id)
           .single()
-          .then(({ data }) => {
+          .then(({ data }: any) => {
             setUserRole(data);
             setLoading(false);
           });

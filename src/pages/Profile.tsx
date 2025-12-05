@@ -36,7 +36,7 @@ const Profile = () => {
     const fetchProfile = async () => {
       if (!user?.id) return;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("profiles")
         .select("*")
         .eq("id", user.id)
@@ -59,21 +59,21 @@ const Profile = () => {
     await signOut();
   };
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.id]: e.target.value,
     }));
   };
 
-  const handleSave = async (e) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!user?.id) return;
 
     setIsSaving(true);
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("profiles")
       .upsert({
         id: user.id,

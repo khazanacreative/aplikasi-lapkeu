@@ -30,7 +30,7 @@ const Reports = () => {
     
     setIsLoading(true);
     
-    let query = supabase
+    let query = (supabase as any)
       .from("transaksi")
       .select("*")
       .eq("user_id", user.id)
