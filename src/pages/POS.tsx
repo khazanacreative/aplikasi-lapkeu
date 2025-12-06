@@ -110,7 +110,7 @@ const POS = () => {
   const fetchInvoices = async () => {
     if (!user?.id) return;
     
-    let query = supabase
+    let query = (supabase as any)
       .from("invoice")
       .select("*")
       .eq("user_id", user.id)
@@ -128,7 +128,7 @@ const POS = () => {
     }
 
     // Check which invoices have been recorded in transactions
-    const { data: transactionsData, error: transactionsError } = await supabase
+    const { data: transactionsData, error: transactionsError } = await (supabase as any)
       .from("transaksi")
       .select("invoice_id")
       .eq("user_id", user.id)
@@ -138,13 +138,13 @@ const POS = () => {
       console.error("Error fetching transactions:", transactionsError);
     }
 
-    const recordedInvoiceIds = new Set(transactionsData?.map(t => t.invoice_id) || []);
+    const recordedInvoiceIds = new Set((transactionsData || []).map((t: any) => t.invoice_id));
 
     // Update invoice status based on whether it's been recorded
-    const invoicesWithStatus = invoicesData?.map(invoice => ({
+    const invoicesWithStatus = (invoicesData || []).map((invoice: any) => ({
       ...invoice,
       status: recordedInvoiceIds.has(invoice.id) ? "Lunas" : "Belum Lunas"
-    })) || [];
+    }));
 
     setInvoices(invoicesWithStatus);
   };
@@ -333,7 +333,7 @@ const POS = () => {
       const branchId = userRole?.branch_id || null;
       
       // Always create invoice (branch_id can be null and synced later)
-      const { data: invoiceData, error: invoiceError } = await supabase.from("invoice").insert({
+      const { data: invoiceData, error: invoiceError } = await (supabase as any).from("invoice").insert({
         branch_id: branchId,
         user_id: user?.id,
         nomor_invoice: invoiceNumber,
@@ -347,19 +347,19 @@ const POS = () => {
 
       // Create invoice items from cart
       const invoiceItems = cart.map(item => ({
-        invoice_id: invoiceData.id,
+        invoice_id: invoiceData?.id,
         nama_item: item.name,
         jumlah: item.quantity,
         harga_satuan: item.price,
         subtotal: item.price * item.quantity,
       }));
 
-      const { error: itemsError } = await supabase.from("invoice_items").insert(invoiceItems);
+      const { error: itemsError } = await (supabase as any).from("invoice_items").insert(invoiceItems);
       if (itemsError) throw itemsError;
 
       // Save to POS transactions only if branch exists
       if (branchId) {
-        const { error: posError } = await supabase.from("pos_transaksi").insert({
+        const { error: posError } = await (supabase as any).from("pos_transaksi").insert({
           branch_id: branchId,
           kode_pos: posCode,
           tanggal: today,
@@ -371,7 +371,7 @@ const POS = () => {
       }
 
       // Save as transaksi (debet/pemasukan) - always save regardless of branch
-      const { error: transaksiError } = await supabase.from("transaksi").insert({
+      const { error: transaksiError } = await (supabase as any).from("transaksi").insert({
         branch_id: branchId,
         user_id: user?.id,
         tanggal: today,
@@ -379,7 +379,7 @@ const POS = () => {
         kategori: "Penjualan",
         jenis: "Debet",
         nominal: totalAmount,
-        invoice_id: invoiceData.id,
+        invoice_id: invoiceData?.id,
       });
 
       if (transaksiError) throw transaksiError;
